@@ -1,0 +1,59 @@
+<!-- templates/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CO₂ Emission Estimation — Home</title>
+  <style>
+    :root{--bg:#f7fafc;--card:#fff;--muted:#64748b;--accent:#16a34a}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#0f172a; margin:0}
+    .container{max-width:980px;margin:48px auto;padding:20px}
+    .card{background:var(--card);border-radius:12px;padding:20px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    a.btn{display:inline-block;padding:10px 16px;border-radius:8px;background:var(--accent);color:white;text-decoration:none;font-weight:600}
+    header h1{margin:0 0 6px 0}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="card" style="margin-bottom:20px">
+      <h1>CO₂ Emission Estimation System</h1>
+      <div class="muted">Monitor, predict and export CO₂ emission estimates</div>
+    </header>
+
+    <section class="card" style="margin-bottom:16px">
+      <h2 style="margin-top:0">Quick access</h2>
+      <p class="muted">Open the dashboard to view stats or run a prediction.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn" href="{{ url_for('dashboard') }}">Open Dashboard</a>
+        <a class="btn" href="{{ url_for('predict') }}">Run Prediction</a>
+        <a class="btn" href="{{ url_for('download_csv') }}" style="background:#0ea5a0">Download Processed CSV</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin-top:0">Status</h3>
+      <div id="health" class="muted">Checking server health...</div>
+    </section>
+  </div>
+
+  <script>
+    async function checkHealth(){
+      try{
+        const r = await fetch('/health');
+        const j = await r.json();
+        const el = document.getElementById('health');
+        if (j && j.status) {
+          el.textContent = `Server: ${j.status} — model loaded: ${j.model_loaded ? 'yes' : 'no'}`;
+        } else {
+          el.textContent = 'Server returned unexpected health payload.';
+        }
+      }catch(e){
+        document.getElementById('health').textContent = 'Server unreachable (fetch failed).';
+      }
+    }
+    checkHealth();
+  </script>
+</body>
+</html>
