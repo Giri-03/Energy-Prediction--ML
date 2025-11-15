@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+
+# Load processed data
+df = pd.read_csv("../data/processed/processed_co2_data.csv")
+
+# Clean column names
+df.columns = [c.strip().replace(" ", "_").replace("(", "").replace(")", "").replace("₃", "3") 
+              for c in df.columns]
+
+# Select features
+feature_cols = ["Emission_Intensity", "Renewable_Share"]
+target_col = "annual_co2_emissions_tonnes"
+
+df = df.dropna(subset=feature_cols + [target_col])
+
+X = df[feature_cols]
+y = df[target_col]
+
+# Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Model
+model = RandomForestRegressor(
+    n_estimators=200,
+    random_state=42
+)
+
+model.fit(X_train_scaled, y_train)
+
+# Save model
+with open("../models/co2_model.pkl", "wb") as f:
+    pickle.dump(model, f)
+
+print("Saved co2_model.pkl")
