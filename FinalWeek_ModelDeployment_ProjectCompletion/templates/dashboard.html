@@ -1,0 +1,290 @@
+<!-- templates/dashboard.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — CO₂ Emission Estimation</title>
+  <style>
+    :root{--bg:#f8fafc;--card:#ffffff;--muted:#667085;--accent:#059669;--danger:#ef4444}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#0f172a; margin:0}
+    .wrap{max-width:1180px;margin:28px auto;padding:20px}
+    .grid{display:grid;gap:16px}
+    .grid-4{grid-template-columns:repeat(4,1fr)}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    h1{margin:0;font-size:20px}
+    .muted{color:var(--muted);font-size:13px}
+    .stat{font-weight:700;font-size:20px}
+    .table{width:100%;border-collapse:collapse;font-size:14px}
+    .table th, .table td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left}
+    .small{font-size:13px;color:var(--muted)}
+    .btn{padding:8px 12px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none}
+    .btn-muted{background:#e6e9ef;color:#0f172a}
+    .placeholder{height:180px;border-radius:8px;background:linear-gradient(90deg,#eef2f6,#f8fafc);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+    .flex{display:flex;gap:12px;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>CO₂ Emission Estimation Dashboard</h1>
+        <div class="small">Last updated: {{ last_updated }}</div>
+      </div>
+      <div class="flex">
+<a class="btn" href="{{ url_for('download_csv') }}" style="background:#0ea5a0">Download Processed CSV</a>
+        <a class="btn-muted" href="{{ url_for('index') }}">Home</a>
+      </div>
+    </header>
+
+    <!-- stat cards -->
+    <div class="grid grid-4" style="margin-bottom:14px">
+      <div class="card">
+        <div class="small">Total Predictions</div>
+        <div class="stat" title="Total entries in predictions_recent.csv">{{ stats.total_predictions | default(0) }}</div>
+        <div class="small">Entries in predictions_recent.csv</div>
+      </div>
+
+      <div class="card">
+        <div class="small">Model R²</div>
+        <div class="stat">{{'0.016190134563130676' }}</div>
+        <div class="small">MAE: {{'278535599.05188036' }} &nbsp;
+          <br>
+         RMSE: {{'1254564631.0765877' }}</div>
+      </div>
+
+      <div class="card">
+        <div class="small">Latest Dataset</div>
+        <div class="stat">{{ stats.latest_dataset if stats and stats.latest_dataset else 'predictions_recent.csv' }}</div>
+        <div class="small">Stored under /data/processed/</div>
+      </div>
+
+      <div class="card">
+        <div class="small">Quick Actions</div>
+        <div style="margin-top:8px">
+          <a class="btn" href="{{ url_for('predict') }}">New Prediction</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- charts + recent predictions (replace your old block with this) -->
+<div class="grid" style="grid-template-columns: 2fr 1fr; gap:16px; margin-bottom:16px">
+  <div class="card">
+    <h3 style="margin-top:0">Historical CO₂ Emission Trend</h3>
+
+    <!-- Upload form -->
+    <form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+      <label for="fileInput" class="small">Upload a processed CSV (must contain year and emission columns)</label>
+      <div style="display:flex; gap:8px; align-items:center; margin:8px 0;">
+        <input id="fileInput" name="file" type="file" accept=".csv" />
+        <button id="uploadBtn" class="btn" type="button">Upload & Draw</button>
+        <div id="uploadStatus" class="small" style="margin-left:8px;color:#666">No file chosen</div>
+      </div>
+      <div class="small" style="margin-top:4px;color:#666">
+        Expected CSV columns examples: <code>year, annual co₂ emissions (tonnes )</code> or <code>Year, Emissions</code> (case-insensitive).
+      </div>
+    </form>
+
+    <!-- Chart area -->
+    <div id="chartArea" style="margin-top:12px;">
+      <canvas id="emissionsChart" style="max-height:320px; width:100%; display:none;"></canvas>
+      <div id="noDataPlaceholder" class="placeholder" style="padding:28px;">
+        <div class="small">No emission time-series found in CSV.</div>
+        <div>Upload a processed CSV with year & emission columns to see a chart.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- right column (recent predictions or other content) -->
+  <div class="card">
+    <h4 style="margin-top:0">Recent predictions</h4>
+    <!-- keep your existing content for this column -->
+    {% if recent_predictions and recent_predictions|length > 0 %}
+  <ul class="small" style="margin-top:8px; padding-left:14px;">
+    {% for item in recent_predictions %}
+      <li>
+        Year: {{ item.year }} — Predicted: {{ item.predicted or '-' }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="small">No recent predictions.</div>
+{% endif %}
+
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const uploadStatus = document.getElementById('uploadStatus');
+  const noDataPlaceholder = document.getElementById('noDataPlaceholder');
+  const chartCanvas = document.getElementById('emissionsChart');
+
+  let chartInstance = null;
+
+  // helper: show status
+  function setStatus(text, isError=false) {
+    uploadStatus.textContent = text;
+    uploadStatus.style.color = isError ? '#b00020' : '#666';
+  }
+
+  // upload handler
+  uploadBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) {
+      setStatus('Please choose a CSV file to upload.', true);
+      return;
+    }
+
+    // Only allow CSV here (frontend guard)
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setStatus('Please upload a .csv file.', true);
+      return;
+    }
+
+    setStatus('Uploading...');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch('{{ url_for("upload_emissions") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await resp.json();
+
+      if (!resp.ok) {
+        setStatus(result.error || 'Upload failed', true);
+        return;
+      }
+
+      // result should contain { labels: [...], values: [...], label?: 'Emissions' }
+      if (!result.labels || !result.values || result.labels.length === 0) {
+        setStatus('Server returned no time series data.', true);
+        return;
+      }
+
+      setStatus(`Loaded ${result.labels.length} points — drawing chart`);
+      drawChart(result.labels, result.values, result.label || 'Emissions');
+    } catch (err) {
+      console.error(err);
+      setStatus('Network or server error', true);
+    }
+  });
+
+  function drawChart(labels, values, seriesLabel) {
+    noDataPlaceholder.style.display = 'none';
+    chartCanvas.style.display = 'block';
+
+    // if a chart was already created, destroy it
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    chartInstance = new Chart(chartCanvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: seriesLabel,
+          data: values,
+          fill: true,
+          tension: 0.2,
+          pointRadius: 3,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            display: true,
+            title: { display: true, text: 'Year' }
+          },
+          y: {
+            display: true,
+            title: { display: true, text: 'CO₂ Emissions (tonnes)' },
+            beginAtZero: false
+          }
+        },
+        plugins: {
+          legend: { display: true }
+        }
+      }
+    });
+  }
+</script>
+
+<div class="card">
+  <h3 style="margin-top:0">Energy Source / Feature Importance</h3>
+  {% if chart.features and chart.features.labels %}
+    <div class="small">Feature Influence (sorted by magnitude)</div>
+    <ul class="small" style="margin-top:8px">
+      {% for lab,val in zip(chart.features.labels, chart.features.values) %}
+        <li>{{ lab }} — {{ "%.4f"|format(val) }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="small">This model does not support feature importance.</div>
+    <div class="small">Use a tree-based model (RandomForest, XGBoost) to view feature importance.</div>
+  {% endif %}
+</div>
+
+
+    <!-- Recent predictions table -->
+    <div class="card">
+      <h3 style="margin-top:0">Recent Predictions</h3>
+      {% if recent_predictions %}
+        <div style="overflow:auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID / Timestamp</th>
+                <th>Entity / Year</th>
+                <th>Actual</th>
+                <th>Predicted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in recent_predictions|reverse %}
+                <tr>
+                  <td>{{ r.timestamp if r.timestamp else r.date if r.date else '—' }}</td>
+                  <td>{{ r.entity or r.region or '—' }} / {{ r.year or '—' }}</td>
+                  <td>{{ r.actual or '-' }}</td>
+                  <td>{{ r.predicted or '-' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="small">No recent predictions file found or it's empty. Predictions will be saved to <code>data/processed/predictions_recent.csv</code> when you run predictions via /predict or /api/predict.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <script>
+    // optional: health probe
+    (async function(){
+      try{
+        const res = await fetch('/health');
+        const j = await res.json();
+        if (!j || !j.status) return;
+        if (!j.model_loaded){
+          console.warn('Model not loaded on server. Predictions will fail until model is present at "+ MODEL_PATH +"');
+        }
+      }catch(e){
+        console.warn('Health check failed', e);
+      }
+    })();
+  </script>
+</body>
+</html>

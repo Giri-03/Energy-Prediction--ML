@@ -1,0 +1,88 @@
+<!-- templates/prediction.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Predict CO₂ Emission</title>
+  <style>
+    :root{--bg:#f7fafc;--card:#fff;--muted:#6b7280;--accent:#059669}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#0f172a; margin:0}
+    .wrap{max-width:980px;margin:32px auto;padding:20px}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}
+    input, select {width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6;margin-bottom:10px}
+    .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;border:none;cursor:pointer}
+    .muted{color:var(--muted);font-size:13px}
+    .result{margin-top:12px;padding:12px;border-radius:10px;background:#f1fdf6;border:1px solid #e6f6ee}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h1 style="margin:0">AI-Powered CO₂ Prediction</h1>
+      <a class="muted" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <form action="{{ url_for('predict') }}" method="POST" id="predict-form">
+        <!-- Names must match prepare_features_from_form() in your Flask app -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <div>
+            <label for="entity">Entity / Region (optional)</label>
+            <input type="text" id="entity" name="entity" placeholder="e.g., Maharashtra" value="{{ request.form.entity if request.form and request.form.entity }}" />
+          </div>
+
+          <div>
+            <label for="year">Year</label>
+            <input type="number" id="year" name="year" placeholder="e.g., 2024" value="{{ request.form.year if request.form and request.form.year }}" required />
+          </div>
+
+          <div>
+            <label for="emission_intensity">Emission Intensity (kg CO₂/MWh)</label>
+            <input type="number" step="any" id="emission_intensity" name="emission_intensity" placeholder="e.g., 1.00" value="{{ request.form.emission_intensity if request.form and request.form.emission_intensity }}" required />
+          </div>
+
+          <div>
+            <label for="renewable_share">Renewable Share (%)</label>
+            <input type="number" step="any" id="renewable_share" name="renewable_share" placeholder="e.g., 25.00" value="{{ request.form.renewable_share if request.form and request.form.renewable_share }}" required />
+          </div>
+
+          <div>
+            <label for="population">Population (optional)</label>
+            <input type="number" id="population" name="population" placeholder="optional number" value="{{ request.form.population if request.form and request.form.population }}" />
+          </div>
+
+          <div>
+            <label for="actual">Actual Emission (optional)</label>
+            <input type="number" step="any" id="actual" name="actual" placeholder="If known, for logging" value="{{ request.form.actual if request.form and request.form.actual }}" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px">
+          <button type="submit" class="btn">Predict CO₂ Emission</button>
+          <button type="reset" class="btn" style="background:#e6e9ef;color:#0f172a">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Result -->
+    <div class="card">
+      <h3 style="margin-top:0">Prediction Result</h3>
+
+      {% if prediction %}
+        <div class="result">
+          <div class="muted">Predicted CO₂ Emission</div>
+          <div style="font-weight:700;font-size:20px;margin-top:6px">{{ prediction }} <span class="muted" style="font-weight:400">metric tons</span></div>
+          {% if explanation %}
+            <div style="margin-top:8px" class="muted">{{ explanation }}</div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="muted">No prediction yet. Fill the form above and submit to run the model on the server.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>
