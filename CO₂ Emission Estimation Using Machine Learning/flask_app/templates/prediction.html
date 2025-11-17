@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Predict CO₂ Emission</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <a href="{{ url_for('index') }}" class="navbar-brand">
+        <span class="navbar-brand-icon">🌍</span>
+        <span>CO₂ Emission System</span>
+      </a>
+      <div class="navbar-links">
+        <a href="{{ url_for('index') }}" class="navbar-link">Home</a>
+        <a href="{{ url_for('dashboard') }}" class="navbar-link">Dashboard</a>
+        <a href="{{ url_for('predict') }}" class="navbar-link active">Predict</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-narrow">
+    <!-- Page Header -->
+    <div style="margin: 2rem 0 2rem 0;">
+      <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔮 AI-Powered CO₂ Prediction</h1>
+      <p class="text-muted">Enter the required information below to get an accurate emission estimate</p>
+    </div>
+
+    <!-- Prediction Form -->
+    <div class="card animate-fade-in">
+      <div class="card-header">
+        <h2 class="card-title">Prediction Parameters</h2>
+        <p class="card-subtitle">Fill in the form below to generate a CO₂ emission prediction</p>
+      </div>
+
+      <form action="{{ url_for('predict') }}" method="POST" id="predict-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="entity" class="form-label">
+              Entity / Region
+              <span class="optional">(optional)</span>
+            </label>
+            <input 
+              type="text" 
+              id="entity" 
+              name="entity" 
+              class="form-input"
+              placeholder="e.g., Maharashtra, India"
+              value="{{ request.form.entity if request.form and request.form.entity }}" 
+            />
+            <span class="form-help">Name of the region or entity for this prediction</span>
+          </div>
+
+          <div class="form-group">
+            <label for="year" class="form-label">
+              Year
+              <span class="required">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="year" 
+              name="year" 
+              class="form-input"
+              placeholder="e.g., 2024"
+              min="1900"
+              max="2100"
+              value="{{ request.form.year if request.form and request.form.year }}" 
+              required 
+            />
+            <span class="form-help">Year for which to predict emissions</span>
+          </div>
+
+          <div class="form-group">
+            <label for="emission_intensity" class="form-label">
+              Emission Intensity (kg CO₂/MWh)
+              <span class="required">*</span>
+            </label>
+            <input 
+              type="number" 
+              step="any" 
+              id="emission_intensity" 
+              name="emission_intensity" 
+              class="form-input"
+              placeholder="e.g., 1.00"
+              min="0"
+              value="{{ request.form.emission_intensity if request.form and request.form.emission_intensity }}" 
+              required 
+            />
+            <span class="form-help">Carbon intensity of energy production in kg CO₂ per MWh</span>
+          </div>
+
+          <div class="form-group">
+            <label for="renewable_share" class="form-label">
+              Renewable Share (%)
+              <span class="required">*</span>
+            </label>
+            <input 
+              type="number" 
+              step="any" 
+              id="renewable_share" 
+              name="renewable_share" 
+              class="form-input"
+              placeholder="e.g., 25.00"
+              min="0"
+              max="100"
+              value="{{ request.form.renewable_share if request.form and request.form.renewable_share }}" 
+              required 
+            />
+            <span class="form-help">Percentage of renewable energy in the energy mix</span>
+          </div>
+
+          <div class="form-group">
+            <label for="population" class="form-label">
+              Population
+              <span class="optional">(optional)</span>
+            </label>
+            <input 
+              type="number" 
+              id="population" 
+              name="population" 
+              class="form-input"
+              placeholder="e.g., 1000000"
+              min="0"
+              value="{{ request.form.population if request.form and request.form.population }}" 
+            />
+            <span class="form-help">Population size of the region</span>
+          </div>
+
+          <div class="form-group">
+            <label for="actual" class="form-label">
+              Actual Emission
+              <span class="optional">(optional)</span>
+            </label>
+            <input 
+              type="number" 
+              step="any" 
+              id="actual" 
+              name="actual" 
+              class="form-input"
+              placeholder="If known, for comparison"
+              min="0"
+              value="{{ request.form.actual if request.form and request.form.actual }}" 
+            />
+            <span class="form-help">Actual emission value for comparison and logging</span>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 2rem;">
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+            <span id="btn-text">🚀 Predict CO₂ Emission</span>
+            <div class="loading" id="loading" style="display: none;">
+              <div class="spinner"></div>
+              <span>Processing...</span>
+            </div>
+          </button>
+          <button type="reset" class="btn btn-ghost btn-lg">Reset Form</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Prediction Result -->
+    <div class="card animate-fade-in" style="margin-top: 2rem;">
+      <div class="card-header">
+        <h2 class="card-title">Prediction Result</h2>
+        <p class="card-subtitle">Your AI-generated emission estimate</p>
+      </div>
+
+      {% if prediction %}
+        {% if prediction == "Error" %}
+          <div class="alert alert-error">
+            <div>
+              <strong>Error:</strong> {{ explanation if explanation else "An error occurred during prediction. Please check your inputs and try again." }}
+            </div>
+          </div>
+        {% else %}
+          <div style="padding: 2rem; background: linear-gradient(135deg, var(--success-light) 0%, var(--primary-lighter) 100%); border-radius: var(--radius-lg); border: 2px solid var(--success);">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <div style="font-size: 2.5rem;">✅</div>
+              <div>
+                <div class="text-muted" style="font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Predicted CO₂ Emission</div>
+                <div style="font-weight: 800; font-size: 3rem; color: var(--primary-dark); margin: 0.5rem 0; letter-spacing: -0.02em;">
+                  {{ prediction }}
+                  <span style="font-size: 1.5rem; font-weight: 400; color: var(--text-muted);">metric tons</span>
+                </div>
+              </div>
+            </div>
+            {% if explanation %}
+              <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--success);">
+                <div class="text-muted" style="font-size: 0.9375rem; line-height: 1.6;">
+                  {{ explanation }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-title">No Prediction Yet</div>
+          <div class="empty-state-desc">Fill the form above and submit to generate an AI-powered emission prediction</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('predict-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const loading = document.getElementById('loading');
+
+    form.addEventListener('submit', function(e) {
+      const requiredFields = form.querySelectorAll('[required]');
+      let isValid = true;
+      
+      requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+          isValid = false;
+          field.style.borderColor = 'var(--error)';
+          field.classList.add('shake');
+        } else {
+          field.style.borderColor = '';
+          field.classList.remove('shake');
+        }
+      });
+
+      if (isValid) {
+        submitBtn.disabled = true;
+        btnText.style.display = 'none';
+        loading.style.display = 'flex';
+      } else {
+        e.preventDefault();
+      }
+    });
+
+    form.addEventListener('reset', function() {
+      submitBtn.disabled = false;
+      btnText.style.display = 'inline';
+      loading.style.display = 'none';
+      form.querySelectorAll('.form-input').forEach(input => {
+        input.style.borderColor = '';
+        input.classList.remove('shake');
+      });
+    });
+
+    // Add shake animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+      }
+      .shake {
+        animation: shake 0.3s ease-in-out;
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

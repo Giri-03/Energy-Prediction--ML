@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — CO₂ Emission Estimation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <a href="{{ url_for('index') }}" class="navbar-brand">
+        <span class="navbar-brand-icon">🌍</span>
+        <span>CO₂ Emission System</span>
+      </a>
+      <div class="navbar-links">
+        <a href="{{ url_for('index') }}" class="navbar-link">Home</a>
+        <a href="{{ url_for('dashboard') }}" class="navbar-link active">Dashboard</a>
+        <a href="{{ url_for('predict') }}" class="navbar-link">Predict</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin: 2rem 0; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">📊 Dashboard</h1>
+        <p class="text-muted">Last updated: {{ last_updated }}</p>
+      </div>
+      <div class="btn-group">
+        <a href="{{ url_for('download_csv') }}" class="btn btn-secondary">
+          <span>📥</span> Download CSV
+        </a>
+        <a href="{{ url_for('predict') }}" class="btn btn-primary">
+          <span>🔮</span> New Prediction
+        </a>
+      </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card animate-fade-in">
+        <div class="stat-card-header">
+          <div style="flex: 1;">
+            <div class="stat-card-label">Total Predictions</div>
+            <div class="stat-card-value">{{ stats.total_predictions | default(0) }}</div>
+          </div>
+          <div class="stat-card-icon">📊</div>
+        </div>
+        <div class="stat-card-desc">Entries in predictions_recent.csv</div>
+      </div>
+
+      <div class="stat-card animate-fade-in" style="border-left-color: var(--secondary);">
+        <div class="stat-card-header">
+          <div style="flex: 1;">
+            <div class="stat-card-label">Model R² Score</div>
+            <div class="stat-card-value" style="font-size: 2rem;">0.016</div>
+          </div>
+          <div class="stat-card-icon">📈</div>
+        </div>
+        <div class="stat-card-desc">
+          <strong>MAE:</strong> 278,535,599<br>
+          <strong>RMSE:</strong> 1,254,564,631
+        </div>
+      </div>
+
+      <div class="stat-card animate-fade-in" style="border-left-color: var(--success);">
+        <div class="stat-card-header">
+          <div style="flex: 1;">
+            <div class="stat-card-label">Latest Dataset</div>
+            <div class="stat-card-value" style="font-size: 1.25rem; word-break: break-word;">
+              {{ stats.latest_dataset if stats and stats.latest_dataset else 'predictions_recent.csv' }}
+            </div>
+          </div>
+          <div class="stat-card-icon">💾</div>
+        </div>
+        <div class="stat-card-desc">Stored under /data/processed/</div>
+      </div>
+    </div>
+
+    <!-- Chart and Recent Predictions -->
+    <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+      <div class="card animate-fade-in">
+        <div class="card-header">
+          <h3 class="card-title">Historical CO₂ Emission Trend</h3>
+          <p class="card-subtitle">Upload a CSV file to visualize emission trends</p>
+        </div>
+
+        <div class="upload-section">
+          <label for="fileInput" class="form-label">Upload Processed CSV File</label>
+          <div class="upload-controls">
+            <div class="file-input-wrapper">
+              <input id="fileInput" name="file" type="file" accept=".csv" />
+            </div>
+            <button id="uploadBtn" class="btn btn-primary" type="button">
+              <span>📤</span> Upload & Draw
+            </button>
+            <div id="uploadStatus" class="upload-status">No file chosen</div>
+          </div>
+          <div class="upload-help">
+            Expected CSV columns: <code>year</code>, <code>annual co₂ emissions (tonnes )</code> or <code>Year</code>, <code>Emissions</code> (case-insensitive)
+          </div>
+        </div>
+
+        <div id="chartArea">
+          <canvas id="emissionsChart" style="display: none;"></canvas>
+          <div id="noDataPlaceholder" class="chart-placeholder">
+            <div class="chart-placeholder-icon">📈</div>
+            <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text);">No Emission Data Available</div>
+            <div class="text-muted">Upload a processed CSV with year & emission columns to visualize the trend</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card animate-fade-in">
+        <div class="card-header">
+          <h4 class="card-title">Recent Predictions</h4>
+          <p class="card-subtitle">Latest 5 predictions</p>
+        </div>
+        {% if recent_predictions and recent_predictions|length > 0 %}
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for item in recent_predictions[:5] %}
+              <li style="padding: 1rem; border-bottom: 1px solid var(--border); transition: background var(--transition-fast);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                  <div style="flex: 1;">
+                    <div style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">
+                      Year {{ item.year }}
+                    </div>
+                    <div class="text-muted" style="font-size: 0.875rem;">
+                      Predicted: <strong style="color: var(--primary);">{{ item.predicted or '-' }}</strong> tons
+                    </div>
+                  </div>
+                  <div class="badge badge-success" style="font-size: 0.625rem;">New</div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state" style="padding: 2rem;">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">No Recent Predictions</div>
+            <div class="empty-state-desc">Make your first prediction to see it here</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Feature Importance -->
+    <div class="card animate-fade-in">
+      <div class="card-header">
+        <h3 class="card-title">Energy Source / Feature Importance</h3>
+        <p class="card-subtitle">Feature influence sorted by magnitude</p>
+      </div>
+      {% if chart.features and chart.features.labels %}
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Feature Name</th>
+                <th style="text-align: right;">Importance Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lab, val in zip(chart.features.labels, chart.features.values) %}
+                <tr>
+                  <td>
+                    <strong>{{ lab }}</strong>
+                  </td>
+                  <td style="text-align: right; font-family: var(--font-mono);">
+                    {{ "%.4f"|format(val) }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 2rem;">
+          <div class="empty-state-icon">ℹ️</div>
+          <div class="empty-state-title">Feature Importance Not Available</div>
+          <div class="empty-state-desc">
+            This model does not support feature importance. Use a tree-based model (RandomForest, XGBoost) to view feature importance.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Recent Predictions Table -->
+    <div class="card animate-fade-in">
+      <div class="card-header">
+        <h3 class="card-title">Recent Predictions Table</h3>
+        <p class="card-subtitle">Complete history of all predictions</p>
+      </div>
+      {% if recent_predictions %}
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID / Timestamp</th>
+                <th>Entity / Year</th>
+                <th>Actual</th>
+                <th style="text-align: right;">Predicted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in recent_predictions|reverse %}
+                <tr>
+                  <td>
+                    <div style="font-family: var(--font-mono); font-size: 0.875rem;">
+                      {{ r.timestamp if r.timestamp else r.date if r.date else '—' }}
+                    </div>
+                  </td>
+                  <td>
+                    <strong>{{ r.entity or r.region or '—' }}</strong><br>
+                    <span class="text-muted" style="font-size: 0.875rem;">Year: {{ r.year or '—' }}</span>
+                  </td>
+                  <td>
+                    {% if r.actual %}
+                      <span class="badge badge-info">{{ r.actual }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td style="text-align: right;">
+                    <strong style="color: var(--primary); font-size: 1.125rem;">{{ r.predicted or '-' }}</strong>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 2rem;">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-title">No Predictions Found</div>
+          <div class="empty-state-desc">
+            No recent predictions file found or it's empty. Predictions will be saved to <code>data/processed/predictions_recent.csv</code> when you run predictions.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const noDataPlaceholder = document.getElementById('noDataPlaceholder');
+    const chartCanvas = document.getElementById('emissionsChart');
+    const chartArea = document.getElementById('chartArea');
+
+    let chartInstance = null;
+
+    function setStatus(text, type = 'default') {
+      uploadStatus.textContent = text;
+      uploadStatus.className = 'upload-status';
+      if (type === 'success') {
+        uploadStatus.classList.add('success');
+      } else if (type === 'error') {
+        uploadStatus.classList.add('error');
+      }
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus('Please choose a CSV file to upload.', 'error');
+        return;
+      }
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        setStatus('Please upload a .csv file.', 'error');
+        return;
+      }
+
+      setStatus('Uploading...', 'default');
+      uploadBtn.disabled = true;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const resp = await fetch('{{ url_for("upload_emissions") }}', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await resp.json();
+
+        if (!resp.ok) {
+          setStatus(result.error || 'Upload failed', 'error');
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        if (!result.labels || !result.values || result.labels.length === 0) {
+          setStatus('Server returned no time series data.', 'error');
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        setStatus(`✓ Loaded ${result.labels.length} data points`, 'success');
+        drawChart(result.labels, result.values, result.label || 'Emissions');
+        uploadBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        setStatus('Network or server error', 'error');
+        uploadBtn.disabled = false;
+      }
+    });
+
+    function drawChart(labels, values, seriesLabel) {
+      noDataPlaceholder.style.display = 'none';
+      chartCanvas.style.display = 'block';
+
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+
+      const ctx = chartCanvas.getContext('2d');
+      
+      // Create gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, 'rgba(5, 150, 105, 0.3)');
+      gradient.addColorStop(1, 'rgba(5, 150, 105, 0.05)');
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: seriesLabel,
+            data: values,
+            borderColor: '#059669',
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: '#059669',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointHoverBackgroundColor: '#047857',
+            pointHoverBorderColor: '#ffffff',
+            pointHoverBorderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 20,
+                font: {
+                  size: 14,
+                  weight: '600'
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              padding: 12,
+              titleFont: {
+                size: 14,
+                weight: '600'
+              },
+              bodyFont: {
+                size: 13
+              },
+              borderColor: '#059669',
+              borderWidth: 1,
+              cornerRadius: 8,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} tonnes`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Year',
+                font: {
+                  size: 14,
+                  weight: '600'
+                },
+                padding: { top: 10, bottom: 10 }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                font: {
+                  size: 12
+                }
+              }
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'CO₂ Emissions (tonnes)',
+                font: {
+                  size: 14,
+                  weight: '600'
+                },
+                padding: { top: 10, bottom: 10 }
+              },
+              beginAtZero: false,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                font: {
+                  size: 12
+                },
+                callback: function(value) {
+                  return value.toLocaleString();
+                }
+              }
+            }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeInOutQuart'
+          }
+        }
+      });
+
+      // Set chart container height
+      const container = chartCanvas.parentElement;
+      container.style.height = '400px';
+    }
+
+    // Health check
+    (async function() {
+      try {
+        const res = await fetch('/health');
+        const j = await res.json();
+        if (!j || !j.status) return;
+        if (!j.model_loaded) {
+          console.warn('Model not loaded on server. Predictions will fail until model is present.');
+        }
+      } catch (e) {
+        console.warn('Health check failed', e);
+      }
+    })();
+  </script>
+</body>
+</html>

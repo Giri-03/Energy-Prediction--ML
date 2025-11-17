@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CO₂ Emission Estimation — Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-content">
+      <a href="{{ url_for('index') }}" class="navbar-brand">
+        <span class="navbar-brand-icon">🌍</span>
+        <span>CO₂ Emission System</span>
+      </a>
+      <div class="navbar-links">
+        <a href="{{ url_for('index') }}" class="navbar-link active">Home</a>
+        <a href="{{ url_for('dashboard') }}" class="navbar-link">Dashboard</a>
+        <a href="{{ url_for('predict') }}" class="navbar-link">Predict</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content animate-fade-in">
+      <h1 class="hero-title">AI-Powered CO₂ Emission Estimation</h1>
+      <p class="hero-subtitle">Monitor, predict, and export CO₂ emission estimates with advanced machine learning analytics</p>
+      <div class="btn-group" style="justify-content: center; margin-top: 2rem;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+          <span>📊</span> View Dashboard
+        </a>
+        <a href="{{ url_for('predict') }}" class="btn btn-outline btn-lg" style="background: rgba(255,255,255,0.2); border-color: white; color: white;">
+          <span>🔮</span> Make Prediction
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <!-- Quick Actions Card -->
+    <div class="card animate-fade-in" style="animation-delay: 0.1s;">
+      <div class="card-header">
+        <h2 class="card-title">Quick Actions</h2>
+        <p class="card-subtitle">Get started with these essential features</p>
+      </div>
+      <div class="btn-group">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+          <span>📊</span> Open Dashboard
+        </a>
+        <a href="{{ url_for('predict') }}" class="btn btn-primary">
+          <span>🔮</span> Run Prediction
+        </a>
+        <a href="{{ url_for('download_csv') }}" class="btn btn-secondary">
+          <span>📥</span> Download CSV
+        </a>
+      </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="stats-grid" style="margin-top: 2rem;">
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="stat-card-header">
+          <div>
+            <div class="stat-card-label">Interactive Dashboard</div>
+            <div class="stat-card-value" style="font-size: 1.5rem; margin: 0.5rem 0;">📊</div>
+          </div>
+          <div class="stat-card-icon">📊</div>
+        </div>
+        <p class="stat-card-desc">
+          View comprehensive statistics, charts, and historical emission trends with real-time data visualization
+        </p>
+      </div>
+
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.3s; border-left-color: var(--secondary);">
+        <div class="stat-card-header">
+          <div>
+            <div class="stat-card-label">AI-Powered Predictions</div>
+            <div class="stat-card-value" style="font-size: 1.5rem; margin: 0.5rem 0;">🤖</div>
+          </div>
+          <div class="stat-card-icon">🤖</div>
+        </div>
+        <p class="stat-card-desc">
+          Get accurate CO₂ emission estimates using advanced machine learning models trained on historical data
+        </p>
+      </div>
+
+      <div class="stat-card animate-fade-in" style="animation-delay: 0.4s; border-left-color: var(--success);">
+        <div class="stat-card-header">
+          <div>
+            <div class="stat-card-label">Data Visualization</div>
+            <div class="stat-card-value" style="font-size: 1.5rem; margin: 0.5rem 0;">📈</div>
+          </div>
+          <div class="stat-card-icon">📈</div>
+        </div>
+        <p class="stat-card-desc">
+          Upload CSV files and visualize emission trends with interactive charts and comprehensive analytics
+        </p>
+      </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="card animate-fade-in" style="animation-delay: 0.5s;">
+      <div class="card-header">
+        <h3 class="card-title">System Status</h3>
+        <p class="card-subtitle">Real-time health monitoring</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-lg);">
+        <div id="statusIndicator" class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+        <div id="health" class="text-muted" style="flex: 1;">Checking server health...</div>
+        <div id="statusBadge" class="badge badge-info" style="display: none;">Checking...</div>
+      </div>
+    </div>
+
+    <!-- Additional Info Cards -->
+    <div class="grid grid-2" style="gap: 1.5rem; margin-top: 2rem;">
+      <div class="card animate-fade-in" style="animation-delay: 0.6s;">
+        <h4 style="margin: 0 0 0.5rem 0;">📋 Features</h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+            <strong>Real-time Monitoring</strong>
+            <div class="text-muted" style="font-size: 0.875rem;">Track emissions in real-time</div>
+          </li>
+          <li style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+            <strong>Machine Learning Models</strong>
+            <div class="text-muted" style="font-size: 0.875rem;">Advanced predictive analytics</div>
+          </li>
+          <li style="padding: 0.5rem 0;">
+            <strong>Data Export</strong>
+            <div class="text-muted" style="font-size: 0.875rem;">Export processed data as CSV</div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card animate-fade-in" style="animation-delay: 0.7s;">
+        <h4 style="margin: 0 0 0.5rem 0;">🚀 Getting Started</h4>
+        <ol style="padding-left: 1.5rem; margin: 0;">
+          <li style="padding: 0.5rem 0;">
+            <strong>Explore Dashboard</strong> - View statistics and charts
+          </li>
+          <li style="padding: 0.5rem 0;">
+            <strong>Make Predictions</strong> - Use AI to estimate emissions
+          </li>
+          <li style="padding: 0.5rem 0;">
+            <strong>Upload Data</strong> - Visualize your own datasets
+          </li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function checkHealth() {
+      const healthEl = document.getElementById('health');
+      const indicatorEl = document.getElementById('statusIndicator');
+      const badgeEl = document.getElementById('statusBadge');
+      
+      try {
+        const r = await fetch('/health');
+        const j = await r.json();
+        
+        if (j && j.status === 'ok') {
+          indicatorEl.style.borderTopColor = 'var(--success)';
+          indicatorEl.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+          
+          const modelStatus = j.model_loaded ? 'Model Loaded' : 'Model Not Loaded';
+          healthEl.innerHTML = `<strong>Server:</strong> <span style="color: var(--success);">${j.status.toUpperCase()}</span> | <strong>Model:</strong> ${modelStatus}`;
+          
+          badgeEl.textContent = j.model_loaded ? '✓ Ready' : '⚠ Warning';
+          badgeEl.className = j.model_loaded ? 'badge badge-success' : 'badge badge-warning';
+          badgeEl.style.display = 'inline-flex';
+        } else {
+          indicatorEl.style.borderTopColor = 'var(--error)';
+          indicatorEl.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+          healthEl.textContent = 'Server returned unexpected response';
+          healthEl.style.color = 'var(--error)';
+          badgeEl.textContent = '✗ Error';
+          badgeEl.className = 'badge badge-error';
+          badgeEl.style.display = 'inline-flex';
+        }
+      } catch (e) {
+        indicatorEl.style.borderTopColor = 'var(--error)';
+        indicatorEl.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+        healthEl.innerHTML = '<strong style="color: var(--error);">❌ Server Unreachable</strong>';
+        badgeEl.textContent = '✗ Offline';
+        badgeEl.className = 'badge badge-error';
+        badgeEl.style.display = 'inline-flex';
+      }
+    }
+    
+    checkHealth();
+    setInterval(checkHealth, 30000);
+  </script>
+</body>
+</html>
